@@ -1,6 +1,4 @@
 <?php
-	ini_set("log_errors", 1);
-	ini_set("error_log", "/customers/3/a/9/xp-de.com/httpd.www/ts3/php-error_live.log");
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
