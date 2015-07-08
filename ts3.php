@@ -28,7 +28,11 @@ switch($task) {
 		break;
 		
 	case 'register': 
-		$api->register();
+		if(isset($_REQUEST['username']) && isset($_REQUEST['password'])){
+			$api->register();
+		}else{
+			// Error
+		}
 		break;
 		
 	case 'login': 
