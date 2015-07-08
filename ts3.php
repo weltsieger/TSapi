@@ -28,11 +28,7 @@ switch($task) {
 		break;
 		
 	case 'register': 
-		if(isset($_REQUEST['username']) && isset($_REQUEST['password'])){
-			$api->register();
-		}else{
-			// Error
-		}
+		$api->register();
 		break;
 		
 	case 'login': 
@@ -95,8 +91,11 @@ class api {
 								);
 	}
 	
-	public function register($username, $password) {
-		
+	public function register() {
+		if(!isset($_REQUEST['username']) && !isset($_REQUEST['password'])){
+			// ERROR
+			exit;
+		}
 		$dbConnection = $this->connectToDb();
 		if($this->return['status']['statuscode'] != '200') {
 			return;
