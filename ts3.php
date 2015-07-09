@@ -275,7 +275,7 @@ class api {
         $sql = "UPDATE " . globalConfig::$tbl_prefix . "user as u, " . globalConfig::$tbl_prefix . "session as s SET u.password = '" . $newPassword . "' WHERE s.id = '" . $sessionId . "' AND u.id = s.user_id AND u.password = '" . $oldPassword . "'";
 
         if ($dbConnection->query($sql) === TRUE) {
-            if ($dbConnection->affected_rows() == 1) {
+            if ($dbConnection->affected_rows == 1) {
                 $this->return['data'] = array('success' => true);
             } else {
                 $this->return['data'] = array('success' => false);
