@@ -107,7 +107,7 @@ class api {
         $username = $dbConnection->real_escape_string($_REQUEST['username']);
         $password = $dbConnection->real_escape_string($_REQUEST['password']);
         
-        $sql = "INSERT INTO user (username, password) VALUES ('" . $username . "', '" . $password . "')";
+        $sql = "INSERT INTO " . globalConfig::$tbl_prefix . "user (username, password) VALUES ('" . $username . "', '" . $password . "')";
 
         if ($dbConnection->query($sql) === TRUE) {
             $this->return['data'] = array('success' => true);
@@ -139,7 +139,7 @@ class api {
         //	 genrate Session-ID
         //	 Insert Into Session-DB
 
-        $sql = "SELECT * FROM user WHERE username = '" . $username . "' AND password = '" . $password . "'";
+        $sql = "SELECT * FROM " . globalConfig::$tbl_prefix . "user WHERE username = '" . $username . "' AND password = '" . $password . "'";
         $result = $dbConnection->query($sql);
 
         if ($result->num_rows == 1) {
@@ -153,7 +153,7 @@ class api {
 
         $sessionId = uniqid('', true);
 
-        $sql = "INSERT INTO session (id, user_id, expire) VALUES (" . $userId . ", '" . $sessionId . "', now() + 5 minutes)";
+        $sql = "INSERT INTO " . globalConfig::$tbl_prefix . "session (id, user_id, expire) VALUES (" . $userId . ", '" . $sessionId . "', now() + 5 minutes)";
 
         if ($dbConnection->query($sql) === TRUE) {
             $this->return['data'] = array('sessionId' => $sessionId);
@@ -166,7 +166,7 @@ class api {
 
     public function logout($sessionId) {
         $dbConnection = $this->connectToDb();
-        $sql = "DELETE FROM session WHERE id = '" . $sessionId . "'";
+        $sql = "DELETE FROM " . globalConfig::$tbl_prefix . "session WHERE id = '" . $sessionId . "'";
 
         if ($dbConnection->query($sql) === TRUE) {
             echo "Record deleted successfully";
