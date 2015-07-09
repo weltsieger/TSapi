@@ -46,7 +46,7 @@ switch ($task) {
         break;
 
     case 'setUsername':
-
+        $api->setUsername();
         break;
 
     case 'setPassword':
@@ -54,6 +54,8 @@ switch ($task) {
 
     default:
         //-- not implemented
+        $this->return['status']['statuscode'] = '???';
+        $this->return['status']['message'] = "nicht implementiert";
         break;
 }
 
@@ -220,10 +222,35 @@ class api {
         if ($result->num_rows == 1) {
             $row = $result->fetch_assoc();
             $this->return['data'] = array('username' => $row["username"]);
-            $this->return['status']['statuscode'] = "hab ihn";
         } else {
             $this->return['data'] = array('username' => "");
             $this->return['status']['statuscode'] = "??";
+        }
+    }
+
+    public function setUsername() {
+        if (!isset($_REQUEST['sessionId']) || !isset($_REQUEST['newName'])) {
+            // ERROR
+            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe";
+            return;
+        }
+
+        $dbConnection = $this->connectToDb();
+        if ($this->return['status']['statuscode'] != '200') {
+            return;
+        }
+
+        $sessionId = $dbConnection->real_escape_string($_REQUEST['sessionId']);
+        $newName = $dbConnection->real_escape_string($_REQUEST['newName']);
+
+        $sql = "UPDATE " . globalConfig::$tbl_prefix . "user as u, " . globalConfig::$tbl_prefix . "session as s SET u.username = '" . $newName . "' WHERE s.id = '" . $sessionId . "' AND u.id = s.user_id";
+
+        if ($dbConnection->query($sql) === TRUE) {
+            $this->return['data'] = array('success' => true);
+        } else {
+            $this->return['data'] = array('success' => false);
+            $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
         }
     }
 
