@@ -50,6 +50,7 @@ switch ($task) {
         break;
 
     case 'setPassword':
+        $api->setPassword();
         break;
 
     default:
@@ -245,6 +246,33 @@ class api {
         $newName = $dbConnection->real_escape_string($_REQUEST['newName']);
 
         $sql = "UPDATE " . globalConfig::$tbl_prefix . "user as u, " . globalConfig::$tbl_prefix . "session as s SET u.username = '" . $newName . "' WHERE s.id = '" . $sessionId . "' AND u.id = s.user_id";
+
+        if ($dbConnection->query($sql) === TRUE) {
+            $this->return['data'] = array('success' => true);
+        } else {
+            $this->return['data'] = array('success' => false);
+            $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
+        }
+    }
+
+    public function setPassword() {
+        if (!isset($_REQUEST['sessionId']) || !isset($_REQUEST['newPassword']) || !isset($_REQUEST['oldPassword'])) {
+            // ERROR
+            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe";
+            return;
+        }
+
+        $dbConnection = $this->connectToDb();
+        if ($this->return['status']['statuscode'] != '200') {
+            return;
+        }
+
+        $sessionId = $dbConnection->real_escape_string($_REQUEST['sessionId']);
+        $newPassword = $dbConnection->real_escape_string($_REQUEST['newPassword']);
+        $oldPassword = $dbConnection->real_escape_string($_REQUEST['oldPassword']);
+
+        $sql = "UPDATE " . globalConfig::$tbl_prefix . "user as u, " . globalConfig::$tbl_prefix . "session as s SET u.password = '" . $newPassword . "' WHERE s.id = '" . $sessionId . "' AND u.id = s.user_id AND u.password = '" . $oldPassword . "'";
 
         if ($dbConnection->query($sql) === TRUE) {
             $this->return['data'] = array('success' => true);
