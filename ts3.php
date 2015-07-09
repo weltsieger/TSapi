@@ -45,6 +45,7 @@ switch ($task) {
         break;
 
     case 'setUsername':
+        $api->getUsername();
         break;
 
     case 'setPassword':
@@ -107,7 +108,7 @@ class api {
 
         $username = $dbConnection->real_escape_string($_REQUEST['username']);
         $password = $dbConnection->real_escape_string($_REQUEST['password']);
-        
+
         $sql = "INSERT INTO " . globalConfig::$tbl_prefix . "user (username, password) VALUES ('" . $username . "', '" . $password . "')";
 
         if ($dbConnection->query($sql) === TRUE) {
@@ -127,15 +128,15 @@ class api {
             $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe";
             return;
         }
-        
+
         $dbConnection = $this->connectToDb();
         if ($this->return['status']['statuscode'] != '200') {
             return;
         }
-        
+
         $username = $dbConnection->real_escape_string($_REQUEST['username']);
         $password = $dbConnection->real_escape_string($_REQUEST['password']);
-        
+
         //-- Check Login-Daten
         //	 genrate Session-ID
         //	 Insert Into Session-DB
@@ -172,14 +173,14 @@ class api {
             $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe";
             return;
         }
-        
+
         $dbConnection = $this->connectToDb();
         if ($this->return['status']['statuscode'] != '200') {
             return;
         }
-        
+
         $sessionId = $dbConnection->real_escape_string($_REQUEST['sessionId']);
-        
+
         $sql = "DELETE FROM " . globalConfig::$tbl_prefix . "session WHERE id = '" . $sessionId . "'";
 
         if ($dbConnection->query($sql) === TRUE) {
@@ -195,6 +196,33 @@ class api {
         }
 
         $dbConnection->close();
+    }
+
+    public function getUsername() {
+        if (!isset($_REQUEST['sessionId'])) {
+            // ERROR
+            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe";
+            return;
+        }
+
+        $dbConnection = $this->connectToDb();
+        if ($this->return['status']['statuscode'] != '200') {
+            return;
+        }
+
+        $sessionId = $dbConnection->real_escape_string($_REQUEST['sessionId']);
+
+        $sql = "SELECT * FROM " . globalConfig::$tbl_prefix . "user, " . globalConfig::$tbl_prefix . "session WHERE " . globalConfig::$tbl_prefix . "session.id = '" . $sessionId . "' AND " . globalConfig::$tbl_prefix . "user.id = " . globalConfig::$tbl_prefix . "session.user_id";
+        $result = $dbConnection->query($sql);
+
+        if ($result->num_rows == 1) {
+            $row = $result->fetch_assoc();
+            $this->return['data'] = array('username' => $row["username"]);
+        } else {
+            $this->return['data'] = array('username' => "");
+            $this->return['status']['statuscode'] = "??";
+        }
     }
 
 }
