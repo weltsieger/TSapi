@@ -42,10 +42,11 @@ switch ($task) {
         break;
 
     case 'getUsername':
+        $api->getUsername();
         break;
 
     case 'setUsername':
-        $api->getUsername();
+
         break;
 
     case 'setPassword':
