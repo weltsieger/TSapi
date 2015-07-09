@@ -31,6 +31,7 @@ switch ($task) {
         break;
 
     case 'login':
+        $api->login();
         break;
 
     case 'logout':
@@ -103,6 +104,9 @@ class api {
             return;
         }
 
+        $username = $dbConnection->real_escape_string($_REQUEST['username']);
+        $password = $dbConnection->real_escape_string($_REQUEST['password']);
+        
         $sql = "INSERT INTO user (username, password) VALUES ('" . $username . "', '" . $password . "')";
 
         if ($dbConnection->query($sql) === TRUE) {
@@ -115,13 +119,22 @@ class api {
         $dbConnection->close();
     }
 
-    public function login($username, $password) {
-
+    public function login() {
+        if (!isset($_REQUEST['username']) || !isset($_REQUEST['password'])) {
+            // ERROR
+            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe";
+            return;
+        }
+        
         $dbConnection = $this->connectToDb();
         if ($this->return['status']['statuscode'] != '200') {
             return;
         }
-
+        
+        $username = $dbConnection->real_escape_string($_REQUEST['username']);
+        $password = $dbConnection->real_escape_string($_REQUEST['password']);
+        
         //-- Check Login-Daten
         //	 genrate Session-ID
         //	 Insert Into Session-DB
