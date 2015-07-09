@@ -206,6 +206,8 @@ class api {
             return;
         }
 
+        echo "hier l#äift alles";
+        return;
         $dbConnection = $this->connectToDb();
         if ($this->return['status']['statuscode'] != '200') {
             return;
