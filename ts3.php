@@ -35,6 +35,7 @@ switch ($task) {
         break;
 
     case 'logout':
+        $api->logout();
         break;
 
     case 'deleteUser':
@@ -153,7 +154,7 @@ class api {
 
         $sessionId = uniqid('', true);
 
-        $sql = "INSERT INTO " . globalConfig::$tbl_prefix . "session (id, user_id, expire) VALUES ('" . $sessionId . "', " . $userId . ", now() + INTERVAL 5 minute)";
+        $sql = "INSERT INTO " . globalConfig::$tbl_prefix . "session (id, user_id, expire) VALUES (" . $userId . ", '" . $sessionId . "', now() + 5 minutes)";
 
         if ($dbConnection->query($sql) === TRUE) {
             $this->return['data'] = array('sessionId' => $sessionId);
@@ -164,8 +165,21 @@ class api {
         $dbConnection->close();
     }
 
-    public function logout($sessionId) {
+    public function logout() {
+        if (!isset($_REQUEST['sessionId'])) {
+            // ERROR
+            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe";
+            return;
+        }
+        
         $dbConnection = $this->connectToDb();
+        if ($this->return['status']['statuscode'] != '200') {
+            return;
+        }
+        
+        $sessionId = $dbConnection->real_escape_string($_REQUEST['sessionId']);
+        
         $sql = "DELETE FROM " . globalConfig::$tbl_prefix . "session WHERE id = '" . $sessionId . "'";
 
         if ($dbConnection->query($sql) === TRUE) {
