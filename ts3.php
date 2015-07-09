@@ -275,7 +275,12 @@ class api {
         $sql = "UPDATE " . globalConfig::$tbl_prefix . "user as u, " . globalConfig::$tbl_prefix . "session as s SET u.password = '" . $newPassword . "' WHERE s.id = '" . $sessionId . "' AND u.id = s.user_id AND u.password = '" . $oldPassword . "'";
 
         if ($dbConnection->query($sql) === TRUE) {
-            $this->return['data'] = array('success' => true);
+            if ($dbConnection->affected_rows() == 1) {
+                $this->return['data'] = array('success' => true);
+            } else {
+                $this->return['data'] = array('success' => false);
+                $this->return['status']['message'] = "DB inkonsistenz";
+            }
         } else {
             $this->return['data'] = array('success' => false);
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
