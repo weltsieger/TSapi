@@ -92,7 +92,7 @@ class api {
     }
 
     public function register() {
-        if (!isset($_REQUEST['username']) && !isset($_REQUEST['password'])) {
+        if (!isset($_REQUEST['username']) || !isset($_REQUEST['password'])) {
             // ERROR
             $this->return['status']['statuscode'] = '???';
             $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe";
