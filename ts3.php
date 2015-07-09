@@ -153,7 +153,7 @@ class api {
 
         $sessionId = uniqid('', true);
 
-        $sql = "INSERT INTO " . globalConfig::$tbl_prefix . "session (id, user_id, expire) VALUES (" . $userId . ", '" . $sessionId . "', now() + INTERVAL 5 minute)";
+        $sql = "INSERT INTO " . globalConfig::$tbl_prefix . "session (id, user_id, expire) VALUES (" . $sessionId . ", '" . $userId . "', now() + INTERVAL 5 minute)";
 
         if ($dbConnection->query($sql) === TRUE) {
             $this->return['data'] = array('sessionId' => $sessionId);
