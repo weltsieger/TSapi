@@ -66,10 +66,10 @@ class api {
     );
 
     private function connectToDb() {
-        $servername = "localhost";
-        $username = "username";
-        $password = "password";
-        $dbname = "myDB";
+        $servername = globalCofig::$servername;
+        $username = globalCofig::$username;
+        $password = globalCofig::$password;
+        $dbname = globalCofig::$dbname;
 
         // Create connection
         $conn = new mysqli($servername, $username, $password, $dbname);
