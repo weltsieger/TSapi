@@ -161,7 +161,7 @@ class api {
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
         }
 
-        $conn->close();
+        $dbConnection->close();
     }
 
     public function logout($sessionId) {
