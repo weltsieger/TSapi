@@ -219,6 +219,7 @@ class api {
         if ($result->num_rows == 1) {
             $row = $result->fetch_assoc();
             $this->return['data'] = array('username' => $row["username"]);
+            $this->return['status']['statuscode'] = "hab ihn";
         } else {
             $this->return['data'] = array('username' => "");
             $this->return['status']['statuscode'] = "??";
