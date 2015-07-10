@@ -63,7 +63,8 @@ switch ($task) {
 echo json_encode($api->return);
 
 class api {
-
+    private static _mySqlConnection;
+    
     public $return = array(
         'status' => array(
             'statuscode' => '200',
@@ -73,21 +74,24 @@ class api {
     );
 
     private function connectToDb() {
-        $servername = globalConfig::$servername;
-        $username = globalConfig::$username;
-        $password = globalConfig::$password;
-        $dbname = globalConfig::$dbname;
-
-        // Create connection
-        $conn = new mysqli($servername, $username, $password, $dbname);
-        // Check connection
-        if ($conn->connect_error) {
-            $this->return['status']['statuscode'] = '???';
-            $this->return['status']['message'] = "DB-Connection failed: " . $conn->connect_error;
-            return false;
+        if (!self::$_mySqlConnection)
+        {
+          $servername = globalConfig::$servername;
+          $username = globalConfig::$username;
+          $password = globalConfig::$password;
+          $dbname = globalConfig::$dbname;
+  
+          // Create connection
+          $conn = new mysqli($servername, $username, $password, $dbname);
+          // Check connection
+          if ($conn->connect_error) {
+              $this->return['status']['statuscode'] = '???';
+              $this->return['status']['message'] = "DB-Connection failed: " . $conn->connect_error;
+              return false;
+          }
         }
 
-        return $conn;
+        return self::$_mySqlConnection;
     }
 
     public function functionlist() {
