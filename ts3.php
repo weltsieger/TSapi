@@ -74,7 +74,7 @@ class api {
     );
     
    function __destruct() {
-       if (self::$_mySqlConnection) {
+       if (self::$_mySqlConnection && self::$_mySqlConnection->ping()) {
          self::$_mySqlConnection->close();
        }
    }
