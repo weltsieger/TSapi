@@ -72,7 +72,13 @@ class api {
         ),
         'data' => array()
     );
-
+    
+   function __destruct() {
+       if (self::$_mySqlConnection) {
+         self::$_mySqlConnection->close();
+       }
+   }
+   
     private function connectToDb() {
         if (!self::$_mySqlConnection)
         {
@@ -125,8 +131,6 @@ class api {
             $this->return['data'] = array('success' => false);
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
         }
-
-        $dbConnection->close();
     }
 
     public function login() {
@@ -170,8 +174,6 @@ class api {
         } else {
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
         }
-
-        $dbConnection->close();
     }
 
     public function logout() {
@@ -202,8 +204,6 @@ class api {
             $this->return['data'] = array('success' => false);
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
         }
-
-        $dbConnection->close();
     }
 
     public function getUsername() {
