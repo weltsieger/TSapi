@@ -55,16 +55,14 @@ switch ($task) {
 
     default:
         //-- not implemented
-        $this->return['status']['statuscode'] = '???';
-        $this->return['status']['message'] = "nicht implementiert";
+        $api->return['status']['statuscode'] = '???';
+        $api->return['status']['message'] = "nicht implementiert";
         break;
 }
 
-echo json_encode($api->return);
-
 class api {
-    private static _mySqlConnection;
-    
+
+    private static $_mySqlConnection;
     public $return = array(
         'status' => array(
             'statuscode' => '200',
@@ -72,32 +70,61 @@ class api {
         ),
         'data' => array()
     );
-    
-   function __destruct() {
-       if (self::$_mySqlConnection && self::$_mySqlConnection->ping()) {
-         self::$_mySqlConnection->close();
-       }
-   }
-   
+
+    function __destruct() {
+        echo json_encode($this->return);
+
+        if (self::$_mySqlConnection && self::$_mySqlConnection->ping()) {
+            self::$_mySqlConnection->close();
+        }
+    }
+
     private function connectToDb() {
-        if (!self::$_mySqlConnection)
-        {
-          $servername = globalConfig::$servername;
-          $username = globalConfig::$username;
-          $password = globalConfig::$password;
-          $dbname = globalConfig::$dbname;
-  
-          // Create connection
-          $conn = new mysqli($servername, $username, $password, $dbname);
-          // Check connection
-          if ($conn->connect_error) {
-              $this->return['status']['statuscode'] = '???';
-              $this->return['status']['message'] = "DB-Connection failed: " . $conn->connect_error;
-              return false;
-          }
+        if (!self::$_mySqlConnection) {
+            $servername = globalConfig::$servername;
+            $username = globalConfig::$username;
+            $password = globalConfig::$password;
+            $dbname = globalConfig::$dbname;
+            // Create connection
+            self::$_mySqlConnection = new mysqli($servername, $username, $password, $dbname);
+            // Check connection
+            if (self::$_mySqlConnection->connect_error) {
+
+                $this->return['status']['statuscode'] = '???';
+                $this->return['status']['message'] = "DB-Connection failed: " . self::$_mySqlConnection->connect_error;
+                exit;
+            }
         }
 
         return self::$_mySqlConnection;
+    }
+
+    private function checkSession($sessionId) {
+        $dbConnection = $this->connectToDb();
+        if ($dbConnection === FALSE) {
+            return false;
+        }
+
+        $sql = "DELETE FROM " . globalConfig::$tbl_prefix . "session WHERE expire <= now()";
+
+        if ($dbConnection->query($sql) !== TRUE) {
+            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
+            exit;
+        }
+
+        $sessionId = $dbConnection->real_escape_string($sessionId);
+
+        $sql = "SELECT * FROM " . globalConfig::$tbl_prefix . "session WHERE id = '" . $sessionId . "'";
+        $result = $dbConnection->query($sql);
+
+        if ($result->num_rows == 1) {
+            return true;
+        } else {
+            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['message'] = "Die Session ist tot!";
+            exit;
+        }
     }
 
     public function functionlist() {
@@ -112,8 +139,8 @@ class api {
         if (!isset($_REQUEST['username']) || !isset($_REQUEST['password'])) {
             // ERROR
             $this->return['status']['statuscode'] = '???';
-            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe";
-            return;
+            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
+            exit;
         }
         $dbConnection = $this->connectToDb();
         if ($dbConnection === FALSE) {
@@ -130,6 +157,7 @@ class api {
         } else {
             $this->return['data'] = array('success' => false);
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
+            exit();
         }
     }
 
@@ -137,8 +165,8 @@ class api {
         if (!isset($_REQUEST['username']) || !isset($_REQUEST['password'])) {
             // ERROR
             $this->return['status']['statuscode'] = '???';
-            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe";
-            return;
+            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
+            exit();
         }
 
         $dbConnection = $this->connectToDb();
@@ -162,7 +190,7 @@ class api {
         } else {
             $this->return['data'] = array('success' => false);
             $this->return['status']['message'] = "Datenbank-Fehler!";
-            return;
+            exit;
         }
 
         $sessionId = uniqid('', true);
@@ -180,12 +208,12 @@ class api {
         if (!isset($_REQUEST['sessionId'])) {
             // ERROR
             $this->return['status']['statuscode'] = '???';
-            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe";
-            return;
+            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
+            exit;
         }
 
         $dbConnection = $this->connectToDb();
-        if ($this->return['status']['statuscode'] != '200') {
+        if ($dbConnection === FALSE) {
             return;
         }
 
@@ -197,21 +225,23 @@ class api {
             echo "Record deleted successfully";
         } else {
             echo "Error deleting record: " . $dbConnection->error;
+            exit();
         }
         if ($dbConnection->query($sql) === TRUE) {
             $this->return['data'] = array('success' => true);
         } else {
             $this->return['data'] = array('success' => false);
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
+            exit();
         }
     }
 
     public function getUsername() {
-        if (!isset($_REQUEST['sessionId'])) {
+        if (!isset($_REQUEST['sessionId']) || !$this->checkSession($_REQUEST['sessionId'])) {
             // ERROR
             $this->return['status']['statuscode'] = '???';
-            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe";
-            return;
+            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
+            exit;
         }
 
         $dbConnection = $this->connectToDb();
@@ -230,15 +260,17 @@ class api {
         } else {
             $this->return['data'] = array('username' => "");
             $this->return['status']['statuscode'] = "??";
+            exit();
         }
     }
 
     public function setUsername() {
-        if (!isset($_REQUEST['sessionId']) || !isset($_REQUEST['newName'])) {
+        if (!isset($_REQUEST['sessionId']) || !$this->checkSession($_REQUEST['sessionId']) || !isset($_REQUEST['newName'])) {
             // ERROR
             $this->return['status']['statuscode'] = '???';
-            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe";
-            return;
+            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
+            exit();
+            ;
         }
 
         $dbConnection = $this->connectToDb();
@@ -256,15 +288,16 @@ class api {
         } else {
             $this->return['data'] = array('success' => false);
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
+            exit();
         }
     }
 
     public function setPassword() {
-        if (!isset($_REQUEST['sessionId']) || !isset($_REQUEST['newPassword']) || !isset($_REQUEST['oldPassword'])) {
+        if (!isset($_REQUEST['sessionId']) || !$this->checkSession($_REQUEST['sessionId']) || !isset($_REQUEST['newPassword']) || !isset($_REQUEST['oldPassword'])) {
             // ERROR
             $this->return['status']['statuscode'] = '???';
-            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe";
-            return;
+            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
+            exit();
         }
 
         $dbConnection = $this->connectToDb();
@@ -284,10 +317,12 @@ class api {
             } else {
                 $this->return['data'] = array('success' => false);
                 $this->return['status']['message'] = "DB inkonsistenz";
+                exit();
             }
         } else {
             $this->return['data'] = array('success' => false);
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
+            exit();
         }
     }
 
