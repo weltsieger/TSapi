@@ -106,7 +106,7 @@ class api {
             return;
         }
         $dbConnection = $this->connectToDb();
-        if ($this->return['status']['statuscode'] != '200') {
+        if ($dbConnection === FALSE) {
             return;
         }
 
@@ -134,7 +134,7 @@ class api {
         }
 
         $dbConnection = $this->connectToDb();
-        if ($this->return['status']['statuscode'] != '200') {
+        if ($dbConnection === FALSE) {
             return;
         }
 
@@ -211,7 +211,7 @@ class api {
         }
 
         $dbConnection = $this->connectToDb();
-        if ($this->return['status']['statuscode'] != '200') {
+        if ($dbConnection === FALSE) {
             return;
         }
 
@@ -238,7 +238,7 @@ class api {
         }
 
         $dbConnection = $this->connectToDb();
-        if ($this->return['status']['statuscode'] != '200') {
+        if ($dbConnection === FALSE) {
             return;
         }
 
@@ -264,7 +264,7 @@ class api {
         }
 
         $dbConnection = $this->connectToDb();
-        if ($this->return['status']['statuscode'] != '200') {
+        if ($dbConnection === FALSE) {
             return;
         }
 
