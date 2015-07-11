@@ -107,7 +107,7 @@ class api {
 
             $ts_username = globalConfig::$password;
             $ts_password = globalConfig::$password;
-            
+
             try {
                 // load framework files
                 require_once("libraries/TeamSpeak3/TeamSpeak3.php");
@@ -157,6 +157,10 @@ class api {
             $this->return['status']['message'] = "Die Session ist tot!";
             exit;
         }
+    }
+
+    private function tsSyncIdentityGroups() {
+        
     }
 
     public function functionlist() {
@@ -376,11 +380,13 @@ class api {
         $sql = "SELECT " . globalConfig::$tbl_prefix . "identity.id as identity FROM " . globalConfig::$tbl_prefix . "identity, " . globalConfig::$tbl_prefix . "session WHERE " . globalConfig::$tbl_prefix . "session.id = '" . $sessionId . "' AND " . globalConfig::$tbl_prefix . "identity.user_id = " . globalConfig::$tbl_prefix . "session.user_id";
         $result = $dbConnection->query($sql);
 
-        if ($result->num_rows == 1) {
-            $row = $result->fetch_assoc();
-            $this->return['data'] = array('identity' => $row["identity"]);
+        if ($result->num_rows > 0) {
+            // output data of each row
+            while ($row = $result->fetch_assoc()) {
+                $this->return['data'][] = $row["identity"];
+            }
         } else {
-            $this->return['data'] = array('identity' => "");
+            $this->return['data'] = array();
             $this->return['status']['statuscode'] = "??";
             exit();
         }
@@ -424,7 +430,6 @@ class api {
 
         //-- TS gruppen hinzufügen!
         $tsConnection = $this->connectToTs();
-        
     }
 
 }
