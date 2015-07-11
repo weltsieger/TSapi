@@ -53,6 +53,10 @@ switch ($task) {
         $api->addIdentity();
         break;
 
+	case 'tsSyncIdentityGroups':
+		$api->tsSyncIdentityGroups();
+		break;
+	
     default:
         //-- not implemented
         $api->return['status']['statuscode'] = '???';
@@ -62,7 +66,7 @@ switch ($task) {
 
 class api {
 
-    private $sessionPeriod = '5 minute';
+    private $_sessionPeriod = '50 minute';
     private static $_mySqlConnection;
     private static $_tsConnection;
     public $return = array(
@@ -92,7 +96,7 @@ class api {
             // Check connection
             if (self::$_mySqlConnection->connect_error) {
 
-                $this->return['status']['statuscode'] = '???';
+                $this->return['status']['statuscode'] = '???.' . __LINE__;
                 $this->return['status']['message'] = "DB-Connection failed: " . self::$_mySqlConnection->connect_error;
                 exit;
             }
@@ -105,16 +109,17 @@ class api {
 
         if (!self::$_tsConnection) {
 
-            $ts_username = globalConfig::$password;
-            $ts_password = globalConfig::$password;
+			$ts_host = globalConfig::$ts_host;
+            $ts_username = globalConfig::$ts_username;
+            $ts_password = globalConfig::$ts_password;
 
             try {
                 // load framework files
                 require_once("libraries/TeamSpeak3/TeamSpeak3.php");
                 // connect to local server, authenticate and spawn an object for the virtual server on port 9987
-                $_tsConnection = TeamSpeak3::factory("serverquery://" . $ts_username . ":" . $ts_password . "@127.0.0.1:10011/?server_port=9987");
+                self::$_tsConnection = TeamSpeak3::factory("serverquery://" . $ts_username . ":" . $ts_password . "@" . $ts_host . ":10011/?server_port=9987");
             } catch (Exception $ex) {
-                $this->return['status']['statuscode'] = '???';
+                $this->return['status']['statuscode'] = '???.' . __LINE__;
                 $this->return['status']['message'] = "TS-Connection-Error: " . $ex->getTraceAsString();
                 exit;
             }
@@ -132,7 +137,7 @@ class api {
         $sql = "DELETE FROM " . globalConfig::$tbl_prefix . "session WHERE expire <= now()";
 
         if ($dbConnection->query($sql) !== TRUE) {
-            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
             exit;
         }
@@ -143,23 +148,23 @@ class api {
         $result = $dbConnection->query($sql);
 
         if ($result->num_rows == 1) {
-            $sql = "UPDATE " . globalConfig::$tbl_prefix . "session SET expire = now() + INTERVAL " . $this->sessionPeriod;
+            $sql = "UPDATE " . globalConfig::$tbl_prefix . "session SET expire = now() + INTERVAL " . $this->_sessionPeriod;
 
             if ($dbConnection->query($sql) !== TRUE) {
-                $this->return['status']['statuscode'] = '???';
+                $this->return['status']['statuscode'] = '???.' . __LINE__;
                 $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
                 exit;
             }
 
             return true;
         } else {
-            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
             $this->return['status']['message'] = "Die Session ist tot!";
             exit;
         }
     }
 
-    private function tsSyncIdentityGroups() {
+    public function tsSyncIdentityGroups() {
         $tsConnection = $this->connectToTs();
         $identities = $this->getIdentities();
 
@@ -177,7 +182,6 @@ class api {
 //        print_r($b_fehlt);
 //        print_r($c_fehlt);
 
-
         $mergeGroup = array();
         foreach ($identities as $identity) {
             $groups[$identity] = $this->getIdentityGroups($identity);
@@ -187,20 +191,57 @@ class api {
         $umerge = array_unique($mergeGroup);
 
         foreach ($identities as $identity) {
-            $missedGroup = array_diff($umerge, $identity);
+            $missedGroup = array_diff($umerge, $groups[$identity]);
             $this->addIdentityGroups($identity, $missedGroup);
         }
     }
 
     private function getIdentityGroups($identity) {
         $tsConnection = $this->connectToTs();
-         //$ts3_ServerGroup = $ts3_VirtualServer->serverGroupIdentify();
 
-        $tsServerGroups = $tsConnection->serverGroupList();
+        $tsClient = $tsConnection->clientGetByUid($identity);
+        $identityGroups = array();
+
+        foreach ($tsClient->memberOf() as $group) {
+            //-- nur die Server-Gruppen ausgeben
+            if ($group instanceof TeamSpeak3_Node_Channelgroup) {
+                continue;
+            }
+            $identityGroups[] = $group->getId();
+        }
+
+        return $identityGroups;
     }
 
     private function addIdentityGroups($identity, $groups) {
         $tsConnection = $this->connectToTs();
+
+        try {
+            $tsClient = $tsConnection->clientGetByUid($identity);
+            if (is_array($groups)) {
+                foreach ($groups as $group) {
+                    $log_str = "addIdentityToGroup: id: " . $identity . " - group: " . $group."\n";
+                    $fs = fopen('log.log', "a");
+					fwrite($fs, $log_str);
+                    fclose($fs);
+					try {
+						$tsClient->addServerGroup($group);
+					} catch (Exception $ex) {
+						echo "Fehler: " . $ex->getMessage();
+					}
+                }
+            } else {
+                $fs = fopen('log.log', "a");
+                fwrite($fs, "addIdentityToGroup: id: " . $identity . " - group: " . $groups."\n");
+                fclose($fs);
+                $tsClient->addServerGroup($groups);
+            }
+        } catch (Exception $ex) {
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
+            $this->return['status']['message'] = "Fehler beim hinzufügen einer Gruppe: " . $ex->getMessage();
+			print_r($ex);
+            exit;
+        }
     }
 
     public function functionlist() {
@@ -214,7 +255,7 @@ class api {
     public function register() {
         if (!isset($_REQUEST['username']) || !isset($_REQUEST['password'])) {
             // ERROR
-            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
             $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
             exit;
         }
@@ -232,6 +273,7 @@ class api {
             $this->return['data'] = array('success' => true);
         } else {
             $this->return['data'] = array('success' => false);
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
             exit();
         }
@@ -240,7 +282,7 @@ class api {
     public function login() {
         if (!isset($_REQUEST['username']) || !isset($_REQUEST['password'])) {
             // ERROR
-            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
             $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
             exit();
         }
@@ -265,25 +307,28 @@ class api {
             $userId = $row["id"];
         } else {
             $this->return['data'] = array('success' => false);
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
             $this->return['status']['message'] = "Datenbank-Fehler! " . $result->num_rows;
             exit;
         }
 
         $sessionId = uniqid('', true);
 
-        $sql = "INSERT INTO " . globalConfig::$tbl_prefix . "session (id, user_id, expire) VALUES ('" . $sessionId . "', " . $userId . ", now() + INTERVAL " . $this->sessionPeriod . ")";
+        $sql = "INSERT INTO " . globalConfig::$tbl_prefix . "session (id, user_id, expire) VALUES ('" . $sessionId . "', " . $userId . ", now() + INTERVAL " . $this->_sessionPeriod . ")";
 
         if ($dbConnection->query($sql) === TRUE) {
             $this->return['data'] = array('sessionId' => $sessionId);
         } else {
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
+            exit;
         }
     }
 
     public function logout() {
         if (!isset($_REQUEST['sessionId'])) {
             // ERROR
-            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
             $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
             exit;
         }
@@ -300,7 +345,8 @@ class api {
         if ($dbConnection->query($sql) === TRUE) {
             echo "Record deleted successfully";
         } else {
-            echo "Error deleting record: " . $dbConnection->error;
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
+            $this->return['status']['message'] = "Logout-DB-Fehler" . $dbConnection->error;
             exit();
         }
         if ($dbConnection->query($sql) === TRUE) {
@@ -308,6 +354,7 @@ class api {
         } else {
             $this->return['data'] = array('success' => false);
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
             exit();
         }
     }
@@ -315,7 +362,7 @@ class api {
     public function getUsername() {
         if (!isset($_REQUEST['sessionId']) || !$this->checkSession($_REQUEST['sessionId'])) {
             // ERROR
-            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
             $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
             exit;
         }
@@ -335,7 +382,8 @@ class api {
             $this->return['data'] = array('username' => $row["username"]);
         } else {
             $this->return['data'] = array('username' => "");
-            $this->return['status']['statuscode'] = "??";
+            $this->return['status']['statuscode'] = "???." . __LINE__;
+            $this->return['status']['message'] = "DB-Fehler getUsername" . $dbConnection->error;
             exit();
         }
     }
@@ -343,7 +391,7 @@ class api {
     public function setUsername() {
         if (!isset($_REQUEST['sessionId']) || !$this->checkSession($_REQUEST['sessionId']) || !isset($_REQUEST['newName'])) {
             // ERROR
-            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
             $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
             exit();
             ;
@@ -364,6 +412,7 @@ class api {
         } else {
             $this->return['data'] = array('success' => false);
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
             exit();
         }
     }
@@ -371,7 +420,7 @@ class api {
     public function setPassword() {
         if (!isset($_REQUEST['sessionId']) || !$this->checkSession($_REQUEST['sessionId']) || !isset($_REQUEST['newPassword']) || !isset($_REQUEST['oldPassword'])) {
             // ERROR
-            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
             $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
             exit();
         }
@@ -393,11 +442,13 @@ class api {
             } else {
                 $this->return['data'] = array('success' => false);
                 $this->return['status']['message'] = "DB inkonsistenz";
+                $this->return['status']['statuscode'] = '???.' . __LINE__;
                 exit();
             }
         } else {
             $this->return['data'] = array('success' => false);
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
             exit();
         }
     }
@@ -405,7 +456,7 @@ class api {
     public function getIdentities() {
         if (!isset($_REQUEST['sessionId']) || !$this->checkSession($_REQUEST['sessionId'])) {
             // ERROR
-            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
             $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
             exit;
         }
@@ -427,15 +478,18 @@ class api {
             }
         } else {
             $this->return['data'] = array();
-            $this->return['status']['statuscode'] = "??";
+            $this->return['status']['statuscode'] = "???." . __LINE__;
+            $this->return['status']['message'] = "DB-Fehler getIdentities";
             exit();
         }
+		
+		return $this->return['data'];
     }
 
     public function addIdentity() {
         if (!isset($_REQUEST['sessionId']) || !$this->checkSession($_REQUEST['sessionId']) || !isset($_REQUEST['identity'])) {
             // ERROR
-            $this->return['status']['statuscode'] = '???';
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
             $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
             exit;
         }
@@ -452,7 +506,7 @@ class api {
         $result = $dbConnection->query($sql);
 
         if ($result->num_rows > 0) {
-            $this->return['status']['statuscode'] = "??";
+            $this->return['status']['statuscode'] = "???." . __LINE__;
             $this->return['status']['message'] = "Identität ist beireits registriert.";
             $this->return['data'] = array('success' => false);
             exit;
@@ -461,9 +515,9 @@ class api {
         $sql = "INSERT INTO " . globalConfig::$tbl_prefix . "identity (id, user_id) SELECT '" . $identity . "', user_id FROM " . globalConfig::$tbl_prefix . "session WHERE id = '" . $sessionId . "'";
 
         if ($dbConnection->query($sql) === TRUE) {
-            $this->return['data'] = array('message' => "erfolgreich hinzugefügt");
+            //$this->return['data'] = array('message' => "erfolgreich hinzugefügt");
         } else {
-            $this->return['status']['statuscode'] = "??";
+            $this->return['status']['statuscode'] = "???." . __LINE__;
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
             exit();
         }
