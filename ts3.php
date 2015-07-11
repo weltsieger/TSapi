@@ -160,7 +160,47 @@ class api {
     }
 
     private function tsSyncIdentityGroups() {
-        
+        $tsConnection = $this->connectToTs();
+        $identities = $this->getIdentities();
+
+//        $a = array(1, 2, 3);
+//        $b = array(3, 4, 5);
+//        $c = array(0, 6, 3);
+//
+//        $umerge = array_unique(array_merge($a, $b, $c));
+//        $a_fehlt = array_diff($umerge, $a);
+//        $b_fehlt = array_diff($umerge, $b);
+//        $c_fehlt = array_diff($umerge, $c);
+//
+//        print_r($umerge);
+//        print_r($a_fehlt);
+//        print_r($b_fehlt);
+//        print_r($c_fehlt);
+
+
+        $mergeGroup = array();
+        foreach ($identities as $identity) {
+            $groups[$identity] = $this->getIdentityGroups($identity);
+            $mergeGroup = array_merge($mergeGroup, $groups[$identity]);
+        }
+
+        $umerge = array_unique($mergeGroup);
+
+        foreach ($identities as $identity) {
+            $missedGroup = array_diff($umerge, $identity);
+            $this->addIdentityGroups($identity, $missedGroup);
+        }
+    }
+
+    private function getIdentityGroups($identity) {
+        $tsConnection = $this->connectToTs();
+         //$ts3_ServerGroup = $ts3_VirtualServer->serverGroupIdentify();
+
+        $tsServerGroups = $tsConnection->serverGroupList();
+    }
+
+    private function addIdentityGroups($identity, $groups) {
+        $tsConnection = $this->connectToTs();
     }
 
     public function functionlist() {
@@ -429,7 +469,7 @@ class api {
         }
 
         //-- TS gruppen hinzufügen!
-        $tsConnection = $this->connectToTs();
+        $this->tsSyncIdentityGroups();
     }
 
 }
