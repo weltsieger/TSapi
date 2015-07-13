@@ -53,6 +53,10 @@ switch ($task) {
         $api->addIdentity();
         break;
 
+    case 'deleteIdentity':
+        $api->deleteIdentity();
+        break;
+
     case 'tsSyncIdentityGroups':
         $api->tsSyncIdentityGroups();
         break;
@@ -117,15 +121,15 @@ class api {
                 // load framework files
                 require_once("libraries/TeamSpeak3/TeamSpeak3.php");
                 // connect to local server, authenticate and spawn an object for the virtual server on port 9987
-                self::$_tsConnection = TeamSpeak3::factory("serverquery://" . $ts_username . ":" . $ts_password . "@" . $ts_host . ":10011/?server_port=9987");
+                self::$_tsConnection = TeamSpeak3::factory("serverquery://" . $ts_username . ":" . $ts_password . "@" . $ts_host . ":10011/?server_port=9987&nickname=Felix-User-Sync-Bot");
             } catch (Exception $ex) {
                 $this->return['status']['statuscode'] = '???.' . __LINE__;
                 $this->return['status']['message'] = "TS-Connection-Error: " . $ex->getTraceAsString();
                 exit;
             }
-        } else {
-            return self::$_tsConnection;
         }
+
+        return self::$_tsConnection;
     }
 
     private function checkSession($sessionId) {
@@ -161,38 +165,6 @@ class api {
             $this->return['status']['statuscode'] = '???.' . __LINE__;
             $this->return['status']['message'] = "Die Session ist tot!";
             exit;
-        }
-    }
-
-    public function tsSyncIdentityGroups() {
-        $tsConnection = $this->connectToTs();
-        $identities = $this->getIdentities();
-
-//        $a = array(1, 2, 3);
-//        $b = array(3, 4, 5);
-//        $c = array(0, 6, 3);
-//
-//        $umerge = array_unique(array_merge($a, $b, $c));
-//        $a_fehlt = array_diff($umerge, $a);
-//        $b_fehlt = array_diff($umerge, $b);
-//        $c_fehlt = array_diff($umerge, $c);
-//
-//        print_r($umerge);
-//        print_r($a_fehlt);
-//        print_r($b_fehlt);
-//        print_r($c_fehlt);
-
-        $mergeGroup = array();
-        foreach ($identities as $identity) {
-            $groups[$identity] = $this->getIdentityGroups($identity);
-            $mergeGroup = array_merge($mergeGroup, $groups[$identity]);
-        }
-
-        $umerge = array_unique($mergeGroup);
-
-        foreach ($identities as $identity) {
-            $missedGroup = array_diff($umerge, $groups[$identity]);
-            $this->addIdentityGroups($identity, $missedGroup);
         }
     }
 
@@ -239,6 +211,37 @@ class api {
         } catch (Exception $ex) {
             $this->return['status']['statuscode'] = '???.' . __LINE__;
             $this->return['status']['message'] = "Fehler beim hinzufügen einer Gruppe: " . $ex->getMessage();
+            print_r($ex);
+            exit;
+        }
+    }
+
+    private function deleteIdentityGroups($identity, $groups) {
+        $tsConnection = $this->connectToTs();
+
+        try {
+            $tsClient = $tsConnection->clientGetByUid($identity);
+            if (is_array($groups)) {
+                foreach ($groups as $group) {
+                    $log_str = "deleteIdentityToGroup: id: " . $identity . " - group: " . $group . "\n";
+                    $fs = fopen('log.log', "a");
+                    fwrite($fs, $log_str);
+                    fclose($fs);
+                    try {
+                        $tsClient->remServerGroup($group);
+                    } catch (Exception $ex) {
+                        echo "Fehler: " . $ex->getMessage();
+                    }
+                }
+            } else {
+                $fs = fopen('log.log', "a");
+                fwrite($fs, "deleteIdentityToGroup: id: " . $identity . " - group: " . $groups . "\n");
+                fclose($fs);
+                $tsClient->remServerGroup($groups);
+            }
+        } catch (Exception $ex) {
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
+            $this->return['status']['message'] = "Fehler beim löschen einer Gruppe: " . $ex->getMessage();
             print_r($ex);
             exit;
         }
@@ -524,6 +527,76 @@ class api {
 
         //-- TS gruppen hinzufügen!
         $this->tsSyncIdentityGroups();
+    }
+
+    public function deleteIdentity() {
+        if (!isset($_REQUEST['sessionId']) || !$this->checkSession($_REQUEST['sessionId']) || !isset($_REQUEST['identity'])) {
+            // ERROR
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
+            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
+            exit;
+        }
+
+        $dbConnection = $this->connectToDb();
+        if ($dbConnection === FALSE) {
+            return;
+        }
+
+        $sessionId = $dbConnection->real_escape_string($_REQUEST['sessionId']);
+        $identity = $_REQUEST['identity']; //$dbConnection->real_escape_string($_REQUEST['identity']);
+
+        $sql = "SELECT * FROM " . globalConfig::$tbl_prefix . "identity WHERE id = '" . $identity . "'";
+        $result = $dbConnection->query($sql);
+
+        if ($result->num_rows != 1) {
+            $this->return['status']['statuscode'] = "???." . __LINE__;
+            $this->return['status']['message'] = "Identität nicht gefunden.";
+            $this->return['data'] = array('success' => false);
+            exit;
+        }
+
+        $sql = "DELETE FROM " . globalConfig::$tbl_prefix . "identity WHERE id = '" . $identity . "'";
+
+        if ($dbConnection->query($sql) === TRUE) {
+            $groups = $this->getIdentityGroups($identity);
+            $this->deleteIdentityGroups($identity, $groups);
+        } else {
+            $this->return['status']['statuscode'] = "???." . __LINE__;
+            $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
+            exit();
+        }
+    }
+
+    public function tsSyncIdentityGroups() {
+        $tsConnection = $this->connectToTs();
+        $identities = $this->getIdentities();
+
+//        $a = array(1, 2, 3);
+//        $b = array(3, 4, 5);
+//        $c = array(0, 6, 3);
+//
+//        $umerge = array_unique(array_merge($a, $b, $c));
+//        $a_fehlt = array_diff($umerge, $a);
+//        $b_fehlt = array_diff($umerge, $b);
+//        $c_fehlt = array_diff($umerge, $c);
+//
+//        print_r($umerge);
+//        print_r($a_fehlt);
+//        print_r($b_fehlt);
+//        print_r($c_fehlt);
+
+        $mergeGroup = array();
+        foreach ($identities as $identity) {
+            $groups[$identity] = $this->getIdentityGroups($identity);
+            $mergeGroup = array_merge($mergeGroup, $groups[$identity]);
+        }
+
+        $umerge = array_unique($mergeGroup);
+
+        foreach ($identities as $identity) {
+            $missedGroup = array_diff($umerge, $groups[$identity]);
+            $this->addIdentityGroups($identity, $missedGroup);
+        }
     }
 
 }
