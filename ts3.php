@@ -53,10 +53,10 @@ switch ($task) {
         $api->addIdentity();
         break;
 
-	case 'tsSyncIdentityGroups':
-		$api->tsSyncIdentityGroups();
-		break;
-	
+    case 'tsSyncIdentityGroups':
+        $api->tsSyncIdentityGroups();
+        break;
+
     default:
         //-- not implemented
         $api->return['status']['statuscode'] = '???';
@@ -109,7 +109,7 @@ class api {
 
         if (!self::$_tsConnection) {
 
-			$ts_host = globalConfig::$ts_host;
+            $ts_host = globalConfig::$ts_host;
             $ts_username = globalConfig::$ts_username;
             $ts_password = globalConfig::$ts_password;
 
@@ -220,26 +220,26 @@ class api {
             $tsClient = $tsConnection->clientGetByUid($identity);
             if (is_array($groups)) {
                 foreach ($groups as $group) {
-                    $log_str = "addIdentityToGroup: id: " . $identity . " - group: " . $group."\n";
+                    $log_str = "addIdentityToGroup: id: " . $identity . " - group: " . $group . "\n";
                     $fs = fopen('log.log', "a");
-					fwrite($fs, $log_str);
+                    fwrite($fs, $log_str);
                     fclose($fs);
-					try {
-						$tsClient->addServerGroup($group);
-					} catch (Exception $ex) {
-						echo "Fehler: " . $ex->getMessage();
-					}
+                    try {
+                        $tsClient->addServerGroup($group);
+                    } catch (Exception $ex) {
+                        echo "Fehler: " . $ex->getMessage();
+                    }
                 }
             } else {
                 $fs = fopen('log.log', "a");
-                fwrite($fs, "addIdentityToGroup: id: " . $identity . " - group: " . $groups."\n");
+                fwrite($fs, "addIdentityToGroup: id: " . $identity . " - group: " . $groups . "\n");
                 fclose($fs);
                 $tsClient->addServerGroup($groups);
             }
         } catch (Exception $ex) {
             $this->return['status']['statuscode'] = '???.' . __LINE__;
             $this->return['status']['message'] = "Fehler beim hinzufügen einer Gruppe: " . $ex->getMessage();
-			print_r($ex);
+            print_r($ex);
             exit;
         }
     }
@@ -482,8 +482,8 @@ class api {
             $this->return['status']['message'] = "DB-Fehler getIdentities";
             exit();
         }
-		
-		return $this->return['data'];
+
+        return $this->return['data'];
     }
 
     public function addIdentity() {
