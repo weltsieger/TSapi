@@ -134,7 +134,7 @@ class api {
                 // load framework files
                 require_once("libraries/TeamSpeak3/TeamSpeak3.php");
                 // connect to local server, authenticate and spawn an object for the virtual server on port 9987
-                self::$_tsConnection = TeamSpeak3::factory("serverquery://" . $ts_username . ":" . $ts_password . "@" . $ts_host . ":10011/?server_port=9987&nickname=Felix-User-Sync-Bot");
+                self::$_tsConnection = TeamSpeak3::factory("serverquery://" . $ts_username . ":" . $ts_password . "@" . $ts_host . ":10011/?server_port=9987&nickname=SecurityBot");
             } catch (Exception $ex) {
                 $this->return['status']['statuscode'] = '???.' . __LINE__;
                 $this->return['status']['message'] = "TS-Connection-Error: " . $ex->getTraceAsString();
@@ -205,7 +205,7 @@ class api {
             $tsClient = $tsConnection->clientGetByUid($identity);
             if (is_array($groups)) {
                 foreach ($groups as $group) {
-                    $log_str = "addIdentityToGroup: id: " . $identity . " - group: " . $group . "\n";
+                    $log_str = date("Y-m-d H:i:s - ") . "addIdentityToGroup: id: " . $identity . " - group: " . $group . "\n";
                     $fs = fopen('log.log', "a");
                     fwrite($fs, $log_str);
                     fclose($fs);
@@ -217,7 +217,7 @@ class api {
                 }
             } else {
                 $fs = fopen('log.log', "a");
-                fwrite($fs, "addIdentityToGroup: id: " . $identity . " - group: " . $groups . "\n");
+                fwrite($fs, date("Y-m-d H:i:s - ") . "addIdentityToGroup: id: " . $identity . " - group: " . $groups . "\n");
                 fclose($fs);
                 $tsClient->addServerGroup($groups);
             }
@@ -236,7 +236,7 @@ class api {
             $tsClient = $tsConnection->clientGetByUid($identity);
             if (is_array($groups)) {
                 foreach ($groups as $group) {
-                    $log_str = "deleteIdentityToGroup: id: " . $identity . " - group: " . $group . "\n";
+                    $log_str = date("Y-m-d H:i:s - ") . "deleteIdentityToGroup: id: " . $identity . " - group: " . $group . "\n";
                     $fs = fopen('log.log', "a");
                     fwrite($fs, $log_str);
                     fclose($fs);
@@ -250,7 +250,7 @@ class api {
                 }
             } else {
                 $fs = fopen('log.log', "a");
-                fwrite($fs, "deleteIdentityToGroup: id: " . $identity . " - group: " . $groups . "\n");
+                fwrite($fs, date("Y-m-d H:i:s - ") . "deleteIdentityToGroup: id: " . $identity . " - group: " . $groups . "\n");
                 fclose($fs);
                 $tsClient->remServerGroup($groups);
             }
@@ -479,9 +479,6 @@ class api {
         }
 
         $dbConnection = $this->connectToDb();
-        if ($dbConnection === FALSE) {
-            return;
-        }
 
         $sessionId = $dbConnection->real_escape_string($_REQUEST['sessionId']);
 
@@ -512,9 +509,6 @@ class api {
         }
 
         $dbConnection = $this->connectToDb();
-        if ($dbConnection === FALSE) {
-            return;
-        }
 
         $sessionId = $dbConnection->real_escape_string($_REQUEST['sessionId']);
         $identity = $dbConnection->real_escape_string(urlencode($_REQUEST['identity']));
@@ -651,7 +645,7 @@ class api {
         $row = $result->fetch_assoc();
         $expire = $row['validation_expire'];
         $validation_key = $row['validation_key'];
-        
+
         if (time() > strtotime($expire)) {
             $this->return['status']['statuscode'] = "???." . __LINE__;
             $this->return['status']['message'] = "Validierungszeit überschritten!";
@@ -670,10 +664,10 @@ class api {
 
         if ($dbConnection->query($sql) === TRUE) {
             if ($dbConnection->affected_rows == 1) {
-                $this->return['data'] = array('success' => true);
-
                 //-- TS gruppen hinzufügen!
                 $this->tsSyncIdentityGroups();
+
+                $this->return['data'] = array('success' => true);
             } else {
                 $this->return['data'] = array('success' => false);
                 $this->return['status']['message'] = "DB inkonsistenz";
