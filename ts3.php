@@ -57,6 +57,19 @@ switch ($task) {
         $api->deleteIdentity();
         break;
 
+    case 'validateIdentity':
+        if (!isset($_REQUEST['sessionId']) || !isset($_REQUEST['identity']) || !isset($_REQUEST['validationKey'])) {
+            // ERROR
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
+            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
+            exit;
+        }
+        $sessionId = $_REQUEST['sessionId'];
+        $identity = $_REQUEST['identity'];
+        $validationKey = $_REQUEST['validationKey'];
+        $api->validateIdentity($sessionId, $identity, $validationKey);
+        break;
+
     case 'tsSyncIdentityGroups':
         $api->tsSyncIdentityGroups();
         break;
@@ -230,7 +243,9 @@ class api {
                     try {
                         $tsClient->remServerGroup($group);
                     } catch (Exception $ex) {
-                        echo "Fehler: " . $ex->getMessage();
+                        $this->return['status']['statuscode'] = '???.' . __LINE__;
+                        $this->return['status']['message'] = "Fehler beim löschen einer Gruppe: " . $ex->getMessage();
+                        exit();
                     }
                 }
             } else {
@@ -242,7 +257,6 @@ class api {
         } catch (Exception $ex) {
             $this->return['status']['statuscode'] = '???.' . __LINE__;
             $this->return['status']['message'] = "Fehler beim löschen einer Gruppe: " . $ex->getMessage();
-            print_r($ex);
             exit;
         }
     }
@@ -477,7 +491,7 @@ class api {
         if ($result->num_rows > 0) {
             // output data of each row
             while ($row = $result->fetch_assoc()) {
-                $this->return['data'][] = $row["identity"];
+                $this->return['data'][] = urldecode($row["identity"]);
             }
         } else {
             $this->return['data'] = array();
@@ -503,7 +517,7 @@ class api {
         }
 
         $sessionId = $dbConnection->real_escape_string($_REQUEST['sessionId']);
-        $identity = $dbConnection->real_escape_string($_REQUEST['identity']);
+        $identity = $dbConnection->real_escape_string(urlencode($_REQUEST['identity']));
 
         $sql = "SELECT * FROM " . globalConfig::$tbl_prefix . "identity WHERE id = '" . $identity . "'";
         $result = $dbConnection->query($sql);
@@ -515,7 +529,7 @@ class api {
             exit;
         }
 
-        $sql = "INSERT INTO " . globalConfig::$tbl_prefix . "identity (id, user_id) SELECT '" . $identity . "', user_id FROM " . globalConfig::$tbl_prefix . "session WHERE id = '" . $sessionId . "'";
+        $sql = "INSERT INTO " . globalConfig::$tbl_prefix . "identity (id, user_id, validation_key) SELECT '" . $identity . "', user_id, 'none' FROM " . globalConfig::$tbl_prefix . "session WHERE id = '" . $sessionId . "'";
 
         if ($dbConnection->query($sql) === TRUE) {
             //$this->return['data'] = array('message' => "erfolgreich hinzugefügt");
@@ -524,9 +538,7 @@ class api {
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
             exit();
         }
-
-        //-- TS gruppen hinzufügen!
-        $this->tsSyncIdentityGroups();
+        $this->sendIdentityValidationkey($sessionId, urldecode($identity));
     }
 
     public function deleteIdentity() {
@@ -543,7 +555,7 @@ class api {
         }
 
         $sessionId = $dbConnection->real_escape_string($_REQUEST['sessionId']);
-        $identity = $_REQUEST['identity']; //$dbConnection->real_escape_string($_REQUEST['identity']);
+        $identity = $dbConnection->real_escape_string(urlencode($_REQUEST['identity']));
 
         $sql = "SELECT * FROM " . globalConfig::$tbl_prefix . "identity WHERE id = '" . $identity . "'";
         $result = $dbConnection->query($sql);
@@ -563,6 +575,115 @@ class api {
         } else {
             $this->return['status']['statuscode'] = "???." . __LINE__;
             $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
+            exit();
+        }
+    }
+
+    public function sendIdentityValidationkey($sessionId, $identity) {
+        $this->checkSession($sessionId);
+
+        $dbConnection = $this->connectToDb();
+
+        $identity_encode = $dbConnection->real_escape_string(urlencode($identity));
+
+        $sql = "SELECT * FROM " . globalConfig::$tbl_prefix . "identity WHERE id = '" . $identity_encode . "'";
+        $result = $dbConnection->query($sql);
+
+        if ($result->num_rows != 1) {
+            $this->return['status']['statuscode'] = "???." . __LINE__;
+            $this->return['status']['message'] = "Identität nicht gefunden";
+            $this->return['data'] = array('success' => false);
+            exit;
+        }
+
+        $validationKey = uniqid();
+        $sql = "UPDATE " . globalConfig::$tbl_prefix . "identity SET validation_key = '$validationKey', validation_expire = now() + INTERVAL 1 hour WHERE id = '" . $identity_encode . "'";
+
+        if ($dbConnection->query($sql) === TRUE) {
+            if ($dbConnection->affected_rows == 1) {
+                $this->return['data'] = array('validationKey' => $validationKey);
+
+                $tsConnection = $this->connectToTs();
+
+                try {
+                    $tsClient = $tsConnection->clientGetByUid($identity);
+                    $tsClient->poke("Validation-Key: " . $validationKey);
+                } catch (Exception $ex) {
+                    $this->return['status']['statuscode'] = '???.' . __LINE__;
+                    $this->return['status']['message'] = "Fehler beim Übermitteln des Validation-Key: " . $ex->getMessage();
+                    print_r($ex);
+                    exit;
+                }
+            } else {
+                $this->return['data'] = array('success' => false);
+                $this->return['status']['message'] = "DB inkonsistenz " . $dbConnection->affected_rows;
+                $this->return['status']['statuscode'] = '???.' . __LINE__;
+                exit();
+            }
+        } else {
+            $this->return['data'] = array('success' => false);
+            $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
+            exit();
+        }
+    }
+
+    public function validateIdentity($sessionId, $identity, $validationKey) {
+
+        $dbConnection = $this->connectToDb();
+
+        $sessionId = $dbConnection->real_escape_string($sessionId);
+        $identity = $dbConnection->real_escape_string(urlencode($identity));
+        $validationKey = $dbConnection->real_escape_string(urlencode($validationKey));
+
+        $this->checkSession($_REQUEST['sessionId']);
+
+        $sql = "SELECT * FROM " . globalConfig::$tbl_prefix . "identity WHERE id = '" . $identity . "'";
+        $result = $dbConnection->query($sql);
+
+        if ($result->num_rows != 1) {
+            $this->return['status']['statuscode'] = "???." . __LINE__;
+            $this->return['status']['message'] = "Identität nicht gefunden";
+            $this->return['data'] = array('success' => false);
+            exit;
+        }
+
+        $row = $result->fetch_assoc();
+        $expire = $row['validation_expire'];
+        $validation_key = $row['validation_key'];
+        
+        if (time() > strtotime($expire)) {
+            $this->return['status']['statuscode'] = "???." . __LINE__;
+            $this->return['status']['message'] = "Validierungszeit überschritten!";
+            $this->return['data'] = array('success' => false);
+            exit;
+        }
+
+        if ($validation_key != $validationKey) {
+            $this->return['status']['statuscode'] = "???." . __LINE__;
+            $this->return['status']['message'] = "Validationkey falsch";
+            $this->return['data'] = array('success' => false);
+            exit;
+        }
+
+        $sql = "UPDATE " . globalConfig::$tbl_prefix . "identity SET validation_key = '', validation_expire = ''";
+
+        if ($dbConnection->query($sql) === TRUE) {
+            if ($dbConnection->affected_rows == 1) {
+                $this->return['data'] = array('success' => true);
+
+                //-- TS gruppen hinzufügen!
+                $this->tsSyncIdentityGroups();
+            } else {
+                $this->return['data'] = array('success' => false);
+                $this->return['status']['message'] = "DB inkonsistenz";
+                $this->return['status']['statuscode'] = '???.' . __LINE__;
+                exit();
+            }
+        } else {
+            $this->return['data'] = array('success' => false);
+            $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
             exit();
         }
     }
