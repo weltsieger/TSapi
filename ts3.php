@@ -19,26 +19,63 @@ switch ($task) {
         break;
 
     case 'register':
-        $api->register();
+        if (!isset($_REQUEST['username']) || !isset($_REQUEST['password'])) {
+            // ERROR
+            $api->return['status']['statuscode'] = '???.' . __LINE__;
+            $api->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
+            exit;
+        } else {
+            $api->register($_REQUEST['username'], $_REQUEST['password']);
+        }
+
         break;
 
     case 'login':
-        $api->login();
+        if (!isset($_REQUEST['username']) || !isset($_REQUEST['password'])) {
+            // ERROR
+            $api->return['status']['statuscode'] = '???.' . __LINE__;
+            $api->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
+            exit;
+        } else {
+            $api->login($_REQUEST['username'], $_REQUEST['password']);
+        }
         break;
 
     case 'logout':
-        $api->logout();
+        if (!isset($_REQUEST['sessionId'])) {
+            // ERROR
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
+            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
+            exit;
+        } else {
+            $api->logout($_REQUEST['sessionId']);
+        }
         break;
 
     case 'deleteUser':
         break;
 
     case 'getUsername':
-        $api->getUsername();
+        if (!isset($_REQUEST['sessionId']) || !$this->checkSession($_REQUEST['sessionId'])) {
+            // ERROR
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
+            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
+            exit;
+        } else {
+            $api->getUsername($_REQUEST['sessionId']);
+        }
         break;
 
     case 'setUsername':
-        $api->setUsername();
+        if (!isset($_REQUEST['sessionId']) || !$this->checkSession($_REQUEST['sessionId']) || !isset($_REQUEST['newName'])) {
+            // ERROR
+            $this->return['status']['statuscode'] = '???.' . __LINE__;
+            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
+            exit();
+        } else {
+            $api->setUsername($_REQUEST['sessionId'], $_REQUEST['newName']);
+        }
+
         break;
 
     case 'setPassword':

@@ -190,20 +190,15 @@ class api {
         );
     }
 
-    public function register() {
-        if (!isset($_REQUEST['username']) || !isset($_REQUEST['password'])) {
-            // ERROR
-            $this->return['status']['statuscode'] = '???.' . __LINE__;
-            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
-            exit;
-        }
+    public function register($username, $password) {
+
         $dbConnection = $this->connectToDb();
         if ($dbConnection === FALSE) {
             return;
         }
 
-        $username = $dbConnection->real_escape_string($_REQUEST['username']);
-        $password = $dbConnection->real_escape_string($_REQUEST['password']);
+        $username = $dbConnection->real_escape_string($username);
+        $password = $dbConnection->real_escape_string($password);
 
         $sql = "INSERT INTO " . globalConfig::$tbl_prefix . "user (username, password) VALUES ('" . $username . "', '" . $password . "')";
 
@@ -217,21 +212,15 @@ class api {
         }
     }
 
-    public function login() {
-        if (!isset($_REQUEST['username']) || !isset($_REQUEST['password'])) {
-            // ERROR
-            $this->return['status']['statuscode'] = '???.' . __LINE__;
-            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
-            exit();
-        }
+    public function login($username, $password) {
 
         $dbConnection = $this->connectToDb();
         if ($dbConnection === FALSE) {
             return;
         }
 
-        $username = $dbConnection->real_escape_string($_REQUEST['username']);
-        $password = $dbConnection->real_escape_string($_REQUEST['password']);
+        $username = $dbConnection->real_escape_string($username);
+        $password = $dbConnection->real_escape_string($password);
 
         //-- Check Login-Daten
         //	 genrate Session-ID
@@ -263,20 +252,14 @@ class api {
         }
     }
 
-    public function logout() {
-        if (!isset($_REQUEST['sessionId'])) {
-            // ERROR
-            $this->return['status']['statuscode'] = '???.' . __LINE__;
-            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
-            exit;
-        }
+    public function logout($sessionId) {
 
         $dbConnection = $this->connectToDb();
         if ($dbConnection === FALSE) {
             return;
         }
 
-        $sessionId = $dbConnection->real_escape_string($_REQUEST['sessionId']);
+        $sessionId = $dbConnection->real_escape_string($sessionId);
 
         $sql = "DELETE FROM " . globalConfig::$tbl_prefix . "session WHERE id = '" . $sessionId . "'";
 
@@ -297,20 +280,14 @@ class api {
         }
     }
 
-    public function getUsername() {
-        if (!isset($_REQUEST['sessionId']) || !$this->checkSession($_REQUEST['sessionId'])) {
-            // ERROR
-            $this->return['status']['statuscode'] = '???.' . __LINE__;
-            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
-            exit;
-        }
+    public function getUsername($sessionId) {
 
         $dbConnection = $this->connectToDb();
         if ($dbConnection === FALSE) {
             return;
         }
 
-        $sessionId = $dbConnection->real_escape_string($_REQUEST['sessionId']);
+        $sessionId = $dbConnection->real_escape_string($sessionId);
 
         $sql = "SELECT * FROM " . globalConfig::$tbl_prefix . "user, " . globalConfig::$tbl_prefix . "session WHERE " . globalConfig::$tbl_prefix . "session.id = '" . $sessionId . "' AND " . globalConfig::$tbl_prefix . "user.id = " . globalConfig::$tbl_prefix . "session.user_id";
         $result = $dbConnection->query($sql);
@@ -326,22 +303,15 @@ class api {
         }
     }
 
-    public function setUsername() {
-        if (!isset($_REQUEST['sessionId']) || !$this->checkSession($_REQUEST['sessionId']) || !isset($_REQUEST['newName'])) {
-            // ERROR
-            $this->return['status']['statuscode'] = '???.' . __LINE__;
-            $this->return['status']['message'] = "Fehler bei der Parameter-Übergabe" . __LINE__;
-            exit();
-            ;
-        }
+    public function setUsername($sessionId, $newName) {
 
         $dbConnection = $this->connectToDb();
         if ($dbConnection === FALSE) {
             return;
         }
 
-        $sessionId = $dbConnection->real_escape_string($_REQUEST['sessionId']);
-        $newName = $dbConnection->real_escape_string($_REQUEST['newName']);
+        $sessionId = $dbConnection->real_escape_string($sessionId);
+        $newName = $dbConnection->real_escape_string($newName);
 
         $sql = "UPDATE " . globalConfig::$tbl_prefix . "user as u, " . globalConfig::$tbl_prefix . "session as s SET u.username = '" . $newName . "' WHERE s.id = '" . $sessionId . "' AND u.id = s.user_id";
 
