@@ -1,4 +1,7 @@
 {
+  "name": "weltsieger/tsapi",
+  "description":"A mangement tool for the users and their identities of a TS3 Server",
+  "license":"proprietary",
   "repositories": [
     {
       "type":"vcs",
@@ -6,6 +9,6 @@
     }
   ],
   "require": {
-    "planetteamspeak/ts3phpframework": "v1.1.23"
+    "planetteamspeak/ts3phpframework":"@dev"
   }
 }
