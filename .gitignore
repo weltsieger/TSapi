@@ -2,4 +2,4 @@
 /docs/
 /images/
 /libraries/
-.gitignore
+config.php
