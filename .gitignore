@@ -1,3 +1,8 @@
 vendor/*
 *.lock
 config.php
+
+# Eclipse Projekt Dateien
+.settings/*
+.buildpath
+.project
