@@ -5,8 +5,6 @@ ini_set('display_errors', 1);
 
 header('Content-Type: text/html; charset=UTF-8');
 
-$ts3FameworkPath ="vendor/planetteamspeak/ts3phpframework/";
-
 require_once("config.php");
 require_once($ts3FameworkPath . "/libraries/TeamSpeak3/TeamSpeak3.php");
 

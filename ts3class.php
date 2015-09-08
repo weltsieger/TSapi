@@ -1,6 +1,6 @@
 <?php
 
-require_once("../config.php");
+require_once("config.php");
 
 class api {
 
@@ -53,7 +53,7 @@ class api {
 
             try {
                 // load framework files
-                require_once("libraries/TeamSpeak3/TeamSpeak3.php");
+                require_once($ts3FameworkPath . "libraries/TeamSpeak3/TeamSpeak3.php");
                 // connect to local server, authenticate and spawn an object for the virtual server on port 9987
                 self::$_tsConnection = TeamSpeak3::factory("serverquery://" . $ts_username . ":" . $ts_password . "@" . $ts_host . ":10011/?server_port=9987&nickname=SecurityBot");
             } catch (Exception $ex) {
