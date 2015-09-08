@@ -1,0 +1,11 @@
+{
+  "repositories": [
+    {
+      "type":"vcs",
+      "url": "https://github.com/InfInt/ts3phpframework/"
+    }
+  ],
+  "require": {
+    "planetteamspeak/ts3phpframework": "v1.1.23"
+  }
+}
