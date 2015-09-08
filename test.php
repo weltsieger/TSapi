@@ -5,8 +5,10 @@ ini_set('display_errors', 1);
 
 header('Content-Type: text/html; charset=UTF-8');
 
-require_once("../config.php");
-require_once("../libraries/TeamSpeak3/TeamSpeak3.php");
+$ts3FameworkPath ="vendor/planetteamspeak/ts3phpframework/";
+
+require_once("config.php");
+require_once($ts3FameworkPath . "/libraries/TeamSpeak3/TeamSpeak3.php");
 
 $ts_host = globalConfig::$ts_host;
 $ts_username = globalConfig::$ts_username;
@@ -32,7 +34,7 @@ try {
 
   ksort($clientList);
   ksort($channelList);
-  
+
  /* walk through list of clients */
   echo "<table class=\"list\">\n";
   echo "<tr>\n" .
@@ -50,27 +52,27 @@ try {
   foreach($clientList as $client)
   {
 	$clinfo = $client->getInfo();
-	
+
 	if(!isset($clinfo['connection_connected_time'])) {
 		$clinfo['connection_connected_time'] = 0;//3600000
 	}
-	$uptime = date_create(date("Y-m-d H:i:s" ,$clinfo['connection_connected_time']/1000)); 
+	$uptime = date_create(date("Y-m-d H:i:s" ,$clinfo['connection_connected_time']/1000));
 	$startTime = date_create(date("Y-m-d H:i:s", 0));
 	$uptime_diff = date_diff($startTime, $uptime);
 	$idle_diff = date_diff($startTime, date_create(date("Y-m-d H:i:s" ,$clinfo['client_idle_time']/1000)));
-	
+
 /*
 	$datetime1 = date_create('2009-10-11');
 	$datetime2 = date_create('2009-10-13');
 	$interval = date_diff($datetime1, $datetime2);
 	echo $interval->format('%R%a days');
-*/	
+*/
 
     echo "<tr>\n" .
          "  <td>" . $client->getId() . "</td>\n" .
-		 "  <td><img src=\"../images/viewer/" . $client->getIcon() . ".png\" alt=\"" . $client->getIcon() . "\" title=\"" . $client->getIcon() . "\" /></td>\n".
+		 "  <td><img src=\"" . $ts3FameworkPath . "images/viewer/" . $client->getIcon() . ".png\" alt=\"" . $client->getIcon() . "\" title=\"" . $client->getIcon() . "\" /></td>\n".
          "  <td><a href=\"?page=clientinfo&amp;server=" . $ts3_VirtualServer->getId() . "&amp;client=" . $client->getId() . "\">" . htmlspecialchars($client) . "</a></td>\n" .
-         "  <td>" . $client["client_unique_identifier"] . "</td>\n" . 
+         "  <td>" . $client["client_unique_identifier"] . "</td>\n" .
          "  <td>" . $client["client_platform"] . "</td>\n" .
          "  <td>" . $client["client_version"] . "</td>\n" .
          "  <td><a href=\"?page=channelinfo&amp;server=" . $ts3_VirtualServer->getId() . "&amp;channel=" . $client['cid'] . "\">" . $channelList[$client['cid']] . "</a></td>\n" .
@@ -80,7 +82,7 @@ try {
          "</tr>\n";
 	//print_r($clinfo['connection_connected_time']);
          foreach ($clinfo as $key => $value) {
-             echo "<!-- " . $key . " = " . $value." -->\n"; 
+             echo "<!-- " . $key . " = " . $value." -->\n";
          }
 
   }
@@ -97,7 +99,7 @@ try {
   {
     echo "<tr>\n".
          "  <td>" . $group->getId() . "</td>\n" .
-         "  <td><img src=\"../images/viewer/" . $group->getIcon() . ".png\" alt=\"\" /></td>\n" .
+         "  <td><img src=\"" . $ts3FameworkPath . "images/viewer/" . $group->getIcon() . ".png\" alt=\"\" /></td>\n" .
          "  <td><a href=\"?page=clientinfo&amp;server=" . $ts3_VirtualServer->getId() . "&amp;client=" . $group->getId() . "\">" . htmlspecialchars($group) . "</a></td>\n" .
          "</tr>\n";
   }
@@ -109,17 +111,17 @@ try {
        "  <th>Icon</th>\n" .
        "  <th>Name</th>\n" .
        "</tr>\n";
-	   
+
   foreach($channelList as $client)
   {
     echo "<tr>\n" .
          "  <td>" . $client->getId() . "</td>\n" .
-         "  <td><img src=\"../images/viewer/" . $client->getIcon() . ".png\" alt=\"\" /></td>\n" .
+         "  <td><img src=\"" . $ts3FameworkPath . "images/viewer/" . $client->getIcon() . ".png\" alt=\"\" /></td>\n" .
          "  <td><a href=\"?page=clientinfo&amp;server=" . $ts3_VirtualServer->getId() . "&amp;client=" . $client->getId() . "\">" . htmlspecialchars($client) . "</a></td>\n" .
          "</tr>\n";
-    
+
          foreach ($client->getInfo() as $key => $value) {
-             echo "<!--" . $key . " = " . $value."<br>-->\n"; 
+             echo "<!--" . $key . " = " . $value."<br>-->\n";
          }
          //print_r($client->getInfo());
   }
@@ -133,5 +135,4 @@ catch(Exception $e)
 {
   /* catch exceptions and display error message if anything went wrong */
   echo "<span class='error'><b>Error " . $e->getCode() . ":</b> " . $e->getMessage() . "</span>\n";
-}  
-
+}
