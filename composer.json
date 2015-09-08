@@ -5,7 +5,7 @@
   "repositories": [
     {
       "type":"vcs",
-      "url": "https://github.com/InfInt/ts3phpframework/"
+      "url": "https://github.com/InfInt/ts3phpframework"
     }
   ],
   "require": {
