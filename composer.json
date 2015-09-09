@@ -9,6 +9,12 @@
     }
   ],
   "require": {
-    "planetteamspeak/ts3phpframework":"@dev"
+    "planetteamspeak/ts3phpframework":"@dev",
+    "illuminate/database":"^5.1"
+  },
+  "autoload": {
+    "classmap": [
+      "models"
+    ]
   }
 }

@@ -1,23 +1,53 @@
 <?php
 
+use Illuminate\Database\Eloquent\Model as Eloquent;
+
 /**
  * Dies ist das Model für den Benutzer
  */
-class User
+class User extends Eloquent
 {
-  private $username = '';
-  function __construct()
-  {
-    # code...
-  }
+  protected $fillable = ['username','first_name','last_name'];
+  protected $guarded  = ['id', 'password'];
 
   private function sessionIsValid()
   {
-    # code...
+    return true;
   }
+  /**
+  * Regis
+  */
   public function register($username='', $password='')
   {
-    # code...
+    if (User::where('username','=', $username)->get()) {
+      // Benutzer exstiert schon
+      return false;
+    } else {
+      $user = new User;
+      $user->username = $username;
+      
+    }
+
+    $user = ;
+
+    $dbConnection = $this->connectToDb();
+    if ($dbConnection === FALSE) {
+        return;
+    }
+
+    $username = $dbConnection->real_escape_string($username);
+    $password = $dbConnection->real_escape_string($password);
+
+    $sql = "INSERT INTO " . globalConfig::$tbl_prefix . "user (username, password) VALUES ('" . $username . "', '" . $password . "')";
+
+    if ($dbConnection->query($sql) === TRUE) {
+        $this->return['data'] = array('success' => true);
+    } else {
+        $this->return['data'] = array('success' => false);
+        $this->return['status']['statuscode'] = '???.' . __LINE__;
+        $this->return['status']['message'] = "Ln: " . __FILE__ . ";" . __LINE__ . " - " . __FUNCTION__ . "; Error: " . $sql . "; " . $dbConnection->error;
+        exit();
+    }
   }
 
   public function delete($sessionId='')
@@ -37,7 +67,9 @@ class User
 
   public function getUsername($sessionId='')
   {
-    # code...
+    if (sessionIsValid) {
+      return $username;
+    }
   }
 
   public function setUsername($sessionId='', $newName='')
